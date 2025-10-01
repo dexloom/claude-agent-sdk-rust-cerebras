@@ -1,0 +1,23 @@
+# Rust
+/target
+/claude-agent-sdk-python
+**/*.rs.bk
+Cargo.lock
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentation
+/doc
+
+# Test artifacts
+*.profraw
+*.profdata
