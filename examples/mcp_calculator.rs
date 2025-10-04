@@ -1,5 +1,4 @@
-use serde_json::{json, Value};
-use std::collections::HashMap;
+use serde_json::json;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
@@ -48,7 +47,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         "Calculate (12 + 8) * 3 - 10", // Complex calculation
     ];
 
-    let transport = SubprocessCLITransport::new("claude", &[])?;
+    let transport = SubprocessCLITransport::new("claude", &[]).map_err(|e| {
+        eprintln!("Error initializing transport: {}", e);
+        eprintln!("Make sure the Claude CLI is installed and accessible in your PATH");
+        e
+    })?;
     let client = Client::new(Arc::new(Mutex::new(transport)));
 
     // Create tool definitions for the client
@@ -138,18 +141,32 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let messages = vec![Message::User(user_message)];
 
         // Send query and process responses
-        let _response = client
+        let _response = match client
             .query(messages, tools.clone(), None, Some(true), None, None)
-            .await?;
+            .await
+        {
+            Ok(response) => response,
+            Err(e) => {
+                eprintln!("Error sending query: {}", e);
+                continue;
+            }
+        };
 
         // Process streaming messages
         loop {
-            let message = client.get_next_message().await?;
-            display_message(message.clone());
+            match client.get_next_message().await {
+                Ok(message) => {
+                    display_message(message.clone());
 
-            // Check if this is a result message which indicates the end of the stream
-            if let Message::Result(_) = message {
-                break;
+                    // Check if this is a result message which indicates the end of the stream
+                    if let Message::Result(_) = message {
+                        break;
+                    }
+                }
+                Err(e) => {
+                    eprintln!("Error receiving message: {}", e);
+                    break;
+                }
             }
         }
     }
